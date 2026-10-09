@@ -1,5 +1,3 @@
-import inquirer from 'inquirer'
-import inquirerPrompt from 'inquirer-autocomplete-prompt'
 import { Argv } from 'yargs'
 import { createManagementClient } from '../../utils/contentful-clients'
 
@@ -11,6 +9,7 @@ import { highlightStyle } from '../../utils/styles'
 import { getHeadersFromOption } from '../../utils/headers'
 import { copyright } from '../../utils/copyright'
 import { Space } from 'contentful-management'
+import { prompt } from '../../utils/actions'
 
 export const command = 'use'
 
@@ -56,14 +55,20 @@ interface SpaceUseProps {
   spaceId?: string
   header?: string
   successMsg?: boolean
+  promptHint?: string
 }
 
 export async function spaceUse({
   context,
   spaceId,
   header,
-  successMsg = true
+  successMsg = true,
+  promptHint = 'Pass --space-id <id> to select a space non-interactively.'
 }: SpaceUseProps) {
+  const { default: inquirer } = await import('inquirer')
+  const { default: inquirerPrompt } = await import(
+    'inquirer-autocomplete-prompt'
+  )
   inquirer.registerPrompt('autocomplete', inquirerPrompt)
   const { managementToken, activeEnvironmentId } = context
 
@@ -97,16 +102,19 @@ export async function spaceUse({
       {}
     )
 
-  const answersSpaceSelection = await inquirer.prompt([
-    {
-      type: 'autocomplete',
-      name: 'spaceId',
-      prefix: '👀',
-      message: 'Please select a space:',
-      source: (_: any, input = '') =>
-        spaceChoices.filter(space => space.name.includes(input))
-    }
-  ])
+  const answersSpaceSelection = await prompt(
+    [
+      {
+        type: 'autocomplete',
+        name: 'spaceId',
+        prefix: '👀',
+        message: 'Please select a space:',
+        source: (_: any, input = '') =>
+          spaceChoices.filter(space => space.name.includes(input))
+      }
+    ],
+    { hint: promptHint }
+  )
 
   const space = await client.getSpace(answersSpaceSelection.spaceId)
 

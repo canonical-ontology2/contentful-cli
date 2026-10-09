@@ -3,16 +3,10 @@ import { handleAsyncError as handle } from '../../utils/async'
 import { createManagementClient } from '../../utils/contentful-clients'
 import { spaceUse } from './use'
 
-import { EventSystem } from '../../core/events'
 import { CREATE_SPACE_HANDLER } from '../../core/events/scopes'
 
 import { warningStyle } from '../../utils/styles'
 import { confirmation } from '../../utils/actions'
-import IntentSystem from '../../core/event-handlers/intents'
-import LoggingSystem from '../../core/event-handlers/logging'
-
-import createSpaceIntents from '../../core/event-handlers/intents/create-space-handler'
-import createSpaceLogging from '../../core/event-handlers/logging/create-space-handler'
 
 import { AbortedError } from '../../utils/aborted-error'
 import { getHeadersFromOption } from '../../utils/headers'
@@ -77,6 +71,7 @@ interface SpaceCreateProps {
   feature?: string
   organizationId?: string
   header?: string
+  promptHint?: string
 }
 
 export const spaceCreate = async function (argv: SpaceCreateProps) {
@@ -87,7 +82,8 @@ export const spaceCreate = async function (argv: SpaceCreateProps) {
     yes,
     use,
     header,
-    feature = 'space-create'
+    feature = 'space-create',
+    promptHint
   } = argv
 
   const { managementToken } = context
@@ -108,7 +104,9 @@ the Pricing page: https://www.contentful.com/pricing/?faq_category=payments&faq=
 
   let confirm = false
   if (!yes) {
-    confirm = await confirmation(`Do you want to confirm the space creation?`)
+    confirm = await confirmation(`Do you want to confirm the space creation?`, {
+      hint: promptHint || 'Pass --yes to skip this confirmation.'
+    })
   } else {
     confirm = true
   }
@@ -119,6 +117,20 @@ the Pricing page: https://www.contentful.com/pricing/?faq_category=payments&faq=
     logging.log(warningStyle(`Space creation aborted.`))
     throw new AbortedError()
   }
+
+  const { EventSystem } = await import('../../core/events')
+  const { default: IntentSystem } = await import(
+    '../../core/event-handlers/intents'
+  )
+  const { default: LoggingSystem } = await import(
+    '../../core/event-handlers/logging'
+  )
+  const { default: createSpaceIntents } = await import(
+    '../../core/event-handlers/intents/create-space-handler'
+  )
+  const { default: createSpaceLogging } = await import(
+    '../../core/event-handlers/logging/create-space-handler'
+  )
 
   const intentSystem = new IntentSystem()
   intentSystem.addHandler(createSpaceIntents())
@@ -149,7 +161,8 @@ the Pricing page: https://www.contentful.com/pricing/?faq_category=payments&faq=
         )
 
       organizationId = await dispatcher.intent('SELECT_ORG', {
-        organizations: organizationChoices
+        organizations: organizationChoices,
+        hint: promptHint
       })
     }
   }

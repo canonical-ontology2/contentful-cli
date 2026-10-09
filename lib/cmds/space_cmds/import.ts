@@ -1,4 +1,3 @@
-import runContentfulImport from 'contentful-import'
 import { handleAsyncError as handle } from '../../utils/async'
 import { proxyObjectToString } from '../../utils/proxy'
 import { version } from '../../../package.json'
@@ -65,7 +64,8 @@ export const builder = (yargs: Argv) => {
       default: false
     })
     .option('include-experience-orchestration', {
-      describe: 'Import Experience Orchestration entities (designTokens, components, experienceTemplates, experienceFragments, dataAssemblies, experiences). Requires a space with ExO enabled.',
+      describe:
+        'Import Experience Orchestration entities (designTokens, components, experienceTemplates, experienceFragments, dataAssemblies, experiences). Requires a space with ExO enabled.',
       type: 'boolean',
       default: true
     })
@@ -217,6 +217,7 @@ export const importSpace = async (argv: ImportSpaceProps) => {
     options.rawProxy = rawProxy
   }
 
+  const { default: runContentfulImport } = await import('contentful-import')
   return runContentfulImport(options)
 }
 
